@@ -1,6 +1,7 @@
 import type { LLMRequest } from '@ai-gateway/types';
 import { Body, Controller, Post } from '@nestjs/common';
-import type { TaskQueueService } from '../services/task-queue.service';
+// biome-ignore lint/style/useImportType: <explanation>
+import { TaskQueueService } from '../services/task-queue.service';
 
 interface OpenAIMessage {
   role: 'user' | 'system' | 'assistant';

@@ -1,7 +1,8 @@
 import type { LLMRequest } from "@ai-gateway/types";
 import { Injectable } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import type { TaskClientService } from "./task-client.service";
+// biome-ignore lint/style/useImportType: <explanation>
+import { TaskClientService } from "./task-client.service";
 
 @Injectable()
 export class TaskSchedulerService {
@@ -29,7 +30,9 @@ export class TaskSchedulerService {
 			const result = await this.taskClient.submitTask(request);
 			return result;
 		} catch (error) {
-			throw new Error(`Failed to schedule custom task: ${error.message}`);
+			const errorMessage =
+				error instanceof Error ? error.message : "Unknown error occurred";
+			throw new Error(`Failed to schedule custom task: ${errorMessage}`);
 		}
 	}
 }

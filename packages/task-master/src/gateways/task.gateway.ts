@@ -9,14 +9,16 @@ import {
 	WebSocketGateway,
 	WebSocketServer,
 } from "@nestjs/websockets";
-import type { Server, Socket } from "socket.io";
-import type { TaskQueueService } from "../services/task-queue.service";
-import type { WorkerRegistryService } from "../services/worker-registry.service";
+import { Server, type Socket } from "socket.io";
+// biome-ignore lint/style/useImportType: <explanation>
+import { TaskQueueService } from "../services/task-queue.service";
+// biome-ignore lint/style/useImportType: <explanation>
+import { WorkerRegistryService } from "../services/worker-registry.service";
 
 @WebSocketGateway()
 export class TaskGateway {
 	@WebSocketServer()
-	server: Server;
+	server: Server = new Server();
 
 	constructor(
 		private taskQueue: TaskQueueService,

@@ -1,4 +1,5 @@
-export * from "./worker";
+import { Worker } from "./worker";
+export { Worker };
 
 // Example usage:
 if (require.main === module) {
