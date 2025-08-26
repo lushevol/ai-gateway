@@ -25,11 +25,11 @@ export interface LLMRequest {
 	}>;
 }
 export interface LLMResponse {
-	content: string | object;
+	content: string;
 	usage: {
-		promptTokens: number;
-		completionTokens: number;
-		totalTokens: number;
+		prompt_tokens: number;
+		completion_tokens: number;
+		total_tokens: number;
 	};
 	model: string;
 }

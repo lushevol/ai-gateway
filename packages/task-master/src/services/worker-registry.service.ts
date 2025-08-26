@@ -10,6 +10,12 @@ import { v4 as uuidv4 } from "uuid";
 export class WorkerRegistryService {
 	private workers: Map<string, Worker> = new Map();
 
+	constructor() {
+		setInterval(() => {
+			this.cleanupInactiveWorkers();
+		}, 60000); // Run every minute
+	}
+
 	registerWorker(metadata: WorkerMetadata): Worker {
 		const worker: Worker = {
 			id: uuidv4(),

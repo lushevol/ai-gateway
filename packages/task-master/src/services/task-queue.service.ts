@@ -1,9 +1,10 @@
 import { type LLMRequest, type Task, TaskStatus } from "@ai-gateway/types";
 import { Injectable } from "@nestjs/common";
+import EventEmitter from "events";
 import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
-export class TaskQueueService {
+export class TaskQueueService extends EventEmitter {
 	private tasks: Map<string, Task> = new Map();
 	private queue: string[] = [];
 
@@ -38,6 +39,11 @@ export class TaskQueueService {
 		};
 
 		this.tasks.set(taskId, updatedTask);
+		if (updatedTask.status === TaskStatus.COMPLETED)
+			this.emit("taskComplete", updatedTask);
+		else if (updatedTask.status === TaskStatus.ERROR)
+			this.emit("taskError", updatedTask);
+		else this.emit("taskUpdate", updatedTask);
 		return updatedTask;
 	}
 

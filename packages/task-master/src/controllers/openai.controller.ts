@@ -1,59 +1,57 @@
-import type { LLMRequest } from '@ai-gateway/types';
+import type { LLMRequest, Task } from '@ai-gateway/types';
 import { Body, Controller, Post } from '@nestjs/common';
-// biome-ignore lint/style/useImportType: <explanation>
-import { TaskQueueService } from '../services/task-queue.service';
-
-interface OpenAIMessage {
-  role: 'user' | 'system' | 'assistant';
-  content: string;
-}
-
-interface OpenAIRequest {
-  model: string;
-  messages: OpenAIMessage[];
-  temperature?: number;
-  max_tokens?: number;
-}
+import type { 
+  ChatCompletion, 
+  ChatCompletionCreateParams
+} from 'openai/resources/chat';
+import type { TaskQueueService } from '../services/task-queue.service';
 
 @Controller('v1/chat')
 export class OpenAIController {
-  constructor(private taskQueue: TaskQueueService) {}
+
+  constructor(private taskQueue: TaskQueueService) {
+  }
 
   @Post('completions')
-  async createCompletion(@Body() body: OpenAIRequest) {
-    const systemMessage = body.messages.find(m => m.role === 'system');
-    const userMessages = body.messages.filter(m => m.role === 'user');
+  async createCompletion(@Body() body: ChatCompletionCreateParams): Promise<ChatCompletion> {
+    const systemMessage = body.messages.find((m) => m.role === 'system');
+    const userMessages = body.messages.filter((m) => m.role === 'user');
 
     const request: LLMRequest = {
       model: body.model,
-      systemPrompt: systemMessage?.content,
-      userPrompt: userMessages.map(m => m.content).join('\\n'),
-      temperature: body.temperature,
-      maxTokens: body.max_tokens,
+      systemPrompt: systemMessage?.content as string,
+      userPrompt: userMessages.map((m) => m.content).join('\n'),
+      temperature: body.temperature!,
       responseType: 'text',
     };
 
     const task = this.taskQueue.createTask(request);
 
-    // Wait for task completion (in practice, you'd want to implement streaming)
-    // This is a simplified implementation
-    return new Promise((resolve) => {
-      const checkInterval = setInterval(() => {
-        const currentTask = this.taskQueue.getTask(task.id);
-        if (currentTask?.response) {
-          clearInterval(checkInterval);
+    return new Promise((resolve, reject) => {
+      const handleTaskComplete = (completedTask: Task) => {
+        if (completedTask.id === task.id) {
+          this.taskQueue.removeListener('taskComplete', handleTaskComplete);
           resolve({
             id: task.id,
+            object: 'chat.completion',
+            created: Date.now(),
+            model: body.model,
             choices: [{
+              index: 0,
               message: {
                 role: 'assistant',
-                content: currentTask.response.content,
+                content: completedTask.response?.content ?? "",
+                refusal: null
               },
+              finish_reason: 'stop',
+              logprobs: null
             }],
-            usage: currentTask.response.usage,
+            usage: completedTask.response?.usage,
           });
         }
-      }, 100);
+      };
+
+      this.taskQueue.on('taskComplete', handleTaskComplete);
     });
   }
 }
