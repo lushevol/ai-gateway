@@ -1,0 +1,23 @@
+{
+	"name": "@ai-gateway/task-master",
+	"version": "1.0.0",
+	"scripts": {
+		"build": "nest build",
+		"dev": "nest start --watch",
+		"test": "jest"
+	},
+	"dependencies": {
+		"@nestjs/common": "^11.1.6",
+		"@nestjs/core": "^11.1.6",
+		"@nestjs/platform-express": "^11.1.6",
+		"@nestjs/platform-socket.io": "^11.1.6",
+		"@nestjs/websockets": "^11.1.6",
+		"socket.io": "^4.8.1"
+	},
+	"devDependencies": {
+		"@nestjs/cli": "^11.0.10",
+		"@nestjs/testing": "^11.1.6",
+		"jest": "^30.0.5",
+		"ts-jest": "^29.4.1"
+	}
+}
