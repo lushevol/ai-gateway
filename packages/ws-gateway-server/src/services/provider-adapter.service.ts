@@ -16,6 +16,13 @@ type OpenAIEmbeddingsRequest = {
   [key: string]: unknown;
 };
 
+type ClaudeMessageRequest = {
+  model: string;
+  messages: Array<{ role: string; content: string }>;
+  stream?: boolean;
+  [key: string]: unknown;
+};
+
 @Injectable()
 export class ProviderAdapterService {
   toProxyTaskFromOpenAIChat(taskId: string, body: OpenAIChatRequest): TaskCreatePayload {
@@ -34,6 +41,16 @@ export class ProviderAdapterService {
       provider: 'openai',
       taskType: 'openai.embeddings',
       responseMode: 'sync',
+      request: body,
+    };
+  }
+
+  toProxyTaskFromClaudeMessages(taskId: string, body: ClaudeMessageRequest): TaskCreatePayload {
+    return {
+      taskId,
+      provider: 'claude',
+      taskType: 'claude.messages',
+      responseMode: body.stream ? 'stream' : 'sync',
       request: body,
     };
   }
@@ -58,6 +75,47 @@ export class ProviderAdapterService {
       ],
       usage: result.usage,
     };
+  }
+
+  toOpenAISseFrame(taskId: string, model: string, chunk: { delta?: string; index?: number; finish_reason?: string | null }): string {
+    const payload = {
+      id: taskId,
+      object: 'chat.completion.chunk',
+      created: Math.floor(Date.now() / 1000),
+      model,
+      choices: [
+        {
+          index: chunk.index ?? 0,
+          delta: {
+            content: chunk.delta ?? '',
+          },
+          finish_reason: chunk.finish_reason ?? null,
+        },
+      ],
+    };
+
+    return `data: ${JSON.stringify(payload)}\n\n`;
+  }
+
+  openAIDoneFrame(): string {
+    return 'data: [DONE]\n\n';
+  }
+
+  toClaudeMessagesResponse(taskId: string, model: string, result: { content: string; usage?: Record<string, unknown> }) {
+    return {
+      id: taskId,
+      type: 'message',
+      role: 'assistant',
+      model,
+      content: [{ type: 'text', text: result.content }],
+      stop_reason: 'end_turn',
+      stop_sequence: null,
+      usage: result.usage,
+    };
+  }
+
+  toClaudeSseFrame(event: string, data: unknown): string {
+    return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   }
 
   toOpenAIEmbeddingResponse(model: string, result: { embeddings: number[][]; usage?: { prompt_tokens?: number; total_tokens?: number } }) {

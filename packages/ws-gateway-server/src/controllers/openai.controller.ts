@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, ServiceUnavailableException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Res, ServiceUnavailableException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { ProxyGateway } from '../gateways/proxy.gateway';
 import { ModelsAggregationService } from '../services/models-aggregation.service';
@@ -15,11 +15,38 @@ export class OpenAIController {
   ) {}
 
   @Post('chat/completions')
-  async createChatCompletion(@Body() body: any): Promise<any> {
+  async createChatCompletion(@Body() body: any, @Res({ passthrough: true }) res?: any): Promise<any> {
     const taskId = uuidv4();
     const task = this.adapter.toProxyTaskFromOpenAIChat(taskId, body);
-    const pending = this.taskService.createPendingTask(taskId, task.responseMode, 120000);
 
+    if (task.responseMode === 'stream' && res) {
+      const pending = this.taskService.createPendingTask(taskId, 'stream', 120000);
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      const unsubscribe = pending.onChunk((chunk) => {
+        const payload = chunk.chunk as { delta?: string; index?: number; finish_reason?: string | null };
+        res.write(this.adapter.toOpenAISseFrame(taskId, body.model, payload));
+      });
+
+      if (!this.gateway.dispatchTask(task)) {
+        unsubscribe();
+        throw new ServiceUnavailableException('No online websocket clients');
+      }
+
+      try {
+        await pending.waitForResult();
+        res.write(this.adapter.openAIDoneFrame());
+      } finally {
+        unsubscribe();
+        res.end();
+      }
+
+      return;
+    }
+
+    const pending = this.taskService.createPendingTask(taskId, 'sync', 120000);
     if (!this.gateway.dispatchTask(task)) {
       throw new ServiceUnavailableException('No online websocket clients');
     }
