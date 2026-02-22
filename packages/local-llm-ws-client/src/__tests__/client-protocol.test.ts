@@ -41,7 +41,9 @@ describe('LocalLlmWsClient protocol', () => {
     });
 
     expect(socket.emitted[0].event).toBe('task:chunk');
+    expect(socket.emitted[0].payload.chunkIndex).toBe(0);
     expect(socket.emitted[1].event).toBe('task:chunk');
+    expect(socket.emitted[1].payload.chunkIndex).toBe(1);
     expect(socket.emitted[2].event).toBe('task:complete');
   });
 

@@ -18,9 +18,13 @@ export class OpenAIController {
   async createChatCompletion(@Body() body: any, @Res({ passthrough: true }) res?: any): Promise<any> {
     const taskId = uuidv4();
     const task = this.adapter.toProxyTaskFromOpenAIChat(taskId, body);
+    const socketId = this.gateway.selectNextClientSocketId();
+    if (!socketId) {
+      throw new ServiceUnavailableException('No online websocket clients');
+    }
 
     if (task.responseMode === 'stream' && res) {
-      const pending = this.taskService.createPendingTask(taskId, 'stream', 120000);
+      const pending = this.taskService.createPendingTask(taskId, 'stream', 120000, socketId);
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
@@ -30,14 +34,14 @@ export class OpenAIController {
         res.write(this.adapter.toOpenAISseFrame(taskId, body.model, payload));
       });
 
-      if (!this.gateway.dispatchTask(task)) {
-        unsubscribe();
-        throw new ServiceUnavailableException('No online websocket clients');
-      }
+      this.gateway.emitTaskToClient(socketId, task);
 
       try {
         await pending.waitForResult();
         res.write(this.adapter.openAIDoneFrame());
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        res.write(this.adapter.toOpenAIErrorSseFrame(message));
       } finally {
         unsubscribe();
         res.end();
@@ -46,10 +50,8 @@ export class OpenAIController {
       return;
     }
 
-    const pending = this.taskService.createPendingTask(taskId, 'sync', 120000);
-    if (!this.gateway.dispatchTask(task)) {
-      throw new ServiceUnavailableException('No online websocket clients');
-    }
+    const pending = this.taskService.createPendingTask(taskId, 'sync', 120000, socketId);
+    this.gateway.emitTaskToClient(socketId, task);
 
     const completed = await pending.waitForResult();
     return this.adapter.toOpenAIChatResponse(taskId, body.model, completed.result as { content: string; usage?: Record<string, unknown> });
@@ -59,11 +61,13 @@ export class OpenAIController {
   async createEmbedding(@Body() body: any): Promise<any> {
     const taskId = uuidv4();
     const task = this.adapter.toProxyTaskFromOpenAIEmbeddings(taskId, body);
-    const pending = this.taskService.createPendingTask(taskId, 'sync', 120000);
-
-    if (!this.gateway.dispatchTask(task)) {
+    const socketId = this.gateway.selectNextClientSocketId();
+    if (!socketId) {
       throw new ServiceUnavailableException('No online websocket clients');
     }
+
+    const pending = this.taskService.createPendingTask(taskId, 'sync', 120000, socketId);
+    this.gateway.emitTaskToClient(socketId, task);
 
     const completed = await pending.waitForResult();
     return this.adapter.toOpenAIEmbeddingResponse(body.model, completed.result as { embeddings: number[][]; usage?: { prompt_tokens?: number; total_tokens?: number } });

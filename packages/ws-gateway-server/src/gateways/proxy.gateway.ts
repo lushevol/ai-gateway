@@ -37,18 +37,18 @@ export class ProxyGateway {
   }
 
   @SubscribeMessage('task:chunk')
-  handleTaskChunk(_client: Socket, payload: TaskChunkPayload): void {
-    this.taskService.appendChunk(payload.taskId, payload);
+  handleTaskChunk(client: Socket, payload: TaskChunkPayload): void {
+    this.taskService.appendChunk(payload.taskId, client.id, payload);
   }
 
   @SubscribeMessage('task:complete')
-  handleTaskComplete(_client: Socket, payload: TaskCompletePayload): void {
-    this.taskService.resolveTask(payload.taskId, payload);
+  handleTaskComplete(client: Socket, payload: TaskCompletePayload): void {
+    this.taskService.resolveTask(payload.taskId, client.id, payload);
   }
 
   @SubscribeMessage('task:error')
-  handleTaskError(_client: Socket, payload: TaskErrorPayload): void {
-    this.taskService.rejectTask(payload.taskId, payload);
+  handleTaskError(client: Socket, payload: TaskErrorPayload): void {
+    this.taskService.rejectTask(payload.taskId, client.id, payload);
   }
 
   @SubscribeMessage('models:response')
@@ -56,14 +56,17 @@ export class ProxyGateway {
     this.modelsAggregation.acceptResponse(payload);
   }
 
-  dispatchTask(task: TaskCreatePayload): boolean {
+  selectNextClientSocketId(): string | null {
     const selected = this.clientRegistry.selectNextClient();
     if (!selected) {
-      return false;
+      return null;
     }
 
-    this.server.to(selected.socketId).emit('task:create', task);
-    return true;
+    return selected.socketId;
+  }
+
+  emitTaskToClient(socketId: string, task: TaskCreatePayload): void {
+    this.server.to(socketId).emit('task:create', task);
   }
 
   requestModelsFromAll(requestId: string): number {

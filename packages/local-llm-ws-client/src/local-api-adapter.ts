@@ -76,11 +76,14 @@ export class LocalApiAdapter {
       }
 
       buffer += decoder.decode(next.value, { stream: true });
+      buffer = buffer.replace(/\r\n/g, '\n');
       const parts = buffer.split('\n\n');
       buffer = parts.pop() ?? '';
 
       for (const part of parts) {
         const lines = part.split('\n');
+        const dataLines: string[] = [];
+
         for (const rawLine of lines) {
           const line = rawLine.trim();
           if (!line) {
@@ -92,15 +95,21 @@ export class LocalApiAdapter {
             continue;
           }
 
-          if (!line.startsWith('data:')) {
-            continue;
+          if (line.startsWith('data:')) {
+            dataLines.push(line.replace('data:', '').trim());
           }
+        }
 
-          const rawData = line.replace('data:', '').trim();
-          if (rawData === '[DONE]') {
-            continue;
-          }
+        if (dataLines.length === 0) {
+          continue;
+        }
 
+        const rawData = dataLines.join('\n');
+        if (rawData === '[DONE]') {
+          continue;
+        }
+
+        try {
           const parsed = JSON.parse(rawData);
           if (task.taskType === 'openai.chat') {
             onChunk({
@@ -110,6 +119,12 @@ export class LocalApiAdapter {
             });
           } else {
             onChunk({ event: currentEvent, data: parsed });
+          }
+        } catch {
+          if (task.taskType !== 'openai.chat') {
+            onChunk({ event: currentEvent, data: rawData });
+          } else {
+            continue;
           }
         }
       }
