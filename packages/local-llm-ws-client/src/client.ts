@@ -12,7 +12,15 @@ export class LocalLlmWsClient {
     socket?: SocketLike,
     adapter?: LocalApiAdapter,
   ) {
-    this.socket = socket ?? (io(`${options.gatewayWsUrl}${options.gatewayNamespace ?? '/llm-proxy'}`) as unknown as Socket);
+    this.socket =
+      socket ??
+      (io(`${options.gatewayWsUrl}${options.gatewayNamespace ?? '/llm-proxy'}`, {
+        reconnection: true,
+        reconnectionAttempts: options.reconnectAttempts ?? Infinity,
+        reconnectionDelay: options.reconnectDelayMs ?? 1000,
+        reconnectionDelayMax: options.reconnectDelayMaxMs ?? 10000,
+        timeout: options.connectionTimeoutMs ?? 20000,
+      }) as unknown as Socket);
     this.adapter = adapter ?? new LocalApiAdapter(options);
   }
 
@@ -26,6 +34,10 @@ export class LocalLlmWsClient {
       });
 
       this.startHeartbeat();
+    });
+
+    this.socket.on('disconnect', () => {
+      this.stopHeartbeat();
     });
 
     this.socket.on('task:create', async (task: TaskCreatePayload) => {
@@ -88,5 +100,14 @@ export class LocalLlmWsClient {
     this.heartbeatTimer = setInterval(() => {
       this.socket.emit('client:heartbeat', { ts: Date.now() });
     }, interval);
+  }
+
+  private stopHeartbeat(): void {
+    if (!this.heartbeatTimer) {
+      return;
+    }
+
+    clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = undefined;
   }
 }

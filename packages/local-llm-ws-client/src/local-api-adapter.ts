@@ -13,11 +13,15 @@ export class LocalApiAdapter {
   }
 
   async executeSync(task: Pick<TaskCreatePayload, 'taskType' | 'request'>): Promise<any> {
-    const response = await this.fetchImpl(this.resolvePath(task.taskType), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(task.request),
-    });
+    const response = await this.fetchWithRetry(
+      this.resolvePath(task.taskType),
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(task.request),
+      },
+      'Local API request',
+    );
 
     if (!response.ok) {
       throw new Error(`Local API request failed with status ${response.status}`);
@@ -54,11 +58,15 @@ export class LocalApiAdapter {
     task: Pick<TaskCreatePayload, 'taskType' | 'request'>,
     onChunk: (chunk: any) => void,
   ): Promise<any> {
-    const response = await this.fetchImpl(this.resolvePath(task.taskType), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(task.request),
-    });
+    const response = await this.fetchWithRetry(
+      this.resolvePath(task.taskType),
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(task.request),
+      },
+      'Local API stream request',
+    );
 
     if (!response.ok || !response.body) {
       throw new Error(`Local API stream request failed with status ${response.status}`);
@@ -134,7 +142,7 @@ export class LocalApiAdapter {
   }
 
   async fetchModels(): Promise<ModelDescriptor[]> {
-    const response = await this.fetchImpl(`${this.baseUrl}/v1/models`);
+    const response = await this.fetchWithRetry(`${this.baseUrl}/v1/models`, undefined, 'Local models request');
     if (!response.ok) {
       throw new Error(`Local models request failed with status ${response.status}`);
     }
@@ -160,5 +168,52 @@ export class LocalApiAdapter {
     }
 
     throw new Error(`Unsupported task type: ${taskType}`);
+  }
+
+  private async fetchWithRetry(url: string, init?: RequestInit, operation = 'Local API request'): Promise<Response> {
+    const maxRetries = this.options.localApiMaxRetries ?? 2;
+    const baseDelayMs = this.options.localApiRetryBaseDelayMs ?? 250;
+    const maxDelayMs = this.options.localApiRetryMaxDelayMs ?? 2000;
+
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      try {
+        const response = await this.fetchImpl(url, init);
+        if (response.ok) {
+          return response;
+        }
+
+        if (!this.shouldRetryStatus(response.status) || attempt === maxRetries) {
+          return response;
+        }
+
+        lastError = new Error(`${operation} failed with status ${response.status}`);
+      } catch (error) {
+        if (attempt === maxRetries) {
+          throw error;
+        }
+
+        lastError = error;
+      }
+
+      await this.sleep(Math.min(maxDelayMs, baseDelayMs * 2 ** attempt));
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(`${operation} failed`);
+  }
+
+  private shouldRetryStatus(status: number): boolean {
+    return status === 429 || status >= 500;
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    if (ms <= 0) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, ms);
+    });
   }
 }

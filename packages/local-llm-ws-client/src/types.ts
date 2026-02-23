@@ -5,6 +5,13 @@ export interface ClientOptions {
   clientName?: string;
   version?: string;
   heartbeatIntervalMs?: number;
+  reconnectAttempts?: number;
+  reconnectDelayMs?: number;
+  reconnectDelayMaxMs?: number;
+  connectionTimeoutMs?: number;
+  localApiMaxRetries?: number;
+  localApiRetryBaseDelayMs?: number;
+  localApiRetryMaxDelayMs?: number;
 }
 
 export type ResponseMode = 'sync' | 'stream';

@@ -14,6 +14,41 @@ class FakeSocket {
 }
 
 describe('LocalLlmWsClient protocol', () => {
+  test('stops heartbeat on disconnect and resumes on reconnect', () => {
+    jest.useFakeTimers();
+    const socket = new FakeSocket();
+    const adapter = {
+      executeSync: jest.fn(),
+      executeStream: jest.fn(),
+      fetchModels: jest.fn(),
+    };
+
+    const client = new LocalLlmWsClient(
+      { gatewayWsUrl: 'http://localhost:3000', localLlmBaseUrl: 'http://127.0.0.1:11434', heartbeatIntervalMs: 100 },
+      socket as any,
+      adapter as any,
+    );
+
+    client.start();
+
+    socket.handlers.connect?.({});
+    jest.advanceTimersByTime(250);
+    const heartbeatsBeforeDisconnect = socket.emitted.filter((item) => item.event === 'client:heartbeat').length;
+    expect(heartbeatsBeforeDisconnect).toBeGreaterThan(0);
+
+    socket.handlers.disconnect?.({});
+    const emittedCountAfterDisconnect = socket.emitted.length;
+    jest.advanceTimersByTime(300);
+    expect(socket.emitted.length).toBe(emittedCountAfterDisconnect);
+
+    socket.handlers.connect?.({});
+    jest.advanceTimersByTime(120);
+    const heartbeatsAfterReconnect = socket.emitted.filter((item) => item.event === 'client:heartbeat').length;
+    expect(heartbeatsAfterReconnect).toBeGreaterThan(heartbeatsBeforeDisconnect);
+
+    jest.useRealTimers();
+  });
+
   test('handles stream task:create and emits chunk then complete', async () => {
     const socket = new FakeSocket();
     const adapter = {

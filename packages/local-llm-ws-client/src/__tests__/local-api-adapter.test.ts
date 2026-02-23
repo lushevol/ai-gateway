@@ -79,4 +79,66 @@ describe('LocalApiAdapter', () => {
       finish_reason: null,
     });
   });
+
+  test('executeSync retries on 5xx and succeeds', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'retry-ok' } }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        }),
+      });
+
+    const adapter = new LocalApiAdapter(
+      {
+        gatewayWsUrl: 'http://localhost:3000',
+        localLlmBaseUrl: 'http://127.0.0.1:11434',
+        localApiMaxRetries: 1,
+        localApiRetryBaseDelayMs: 0,
+        localApiRetryMaxDelayMs: 0,
+      },
+      fetchMock as unknown as typeof fetch,
+    );
+
+    const result = await adapter.executeSync({
+      taskType: 'openai.chat',
+      request: { model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }] },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.content).toBe('retry-ok');
+  });
+
+  test('executeSync does not retry on 4xx', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+    });
+
+    const adapter = new LocalApiAdapter(
+      {
+        gatewayWsUrl: 'http://localhost:3000',
+        localLlmBaseUrl: 'http://127.0.0.1:11434',
+        localApiMaxRetries: 2,
+        localApiRetryBaseDelayMs: 0,
+        localApiRetryMaxDelayMs: 0,
+      },
+      fetchMock as unknown as typeof fetch,
+    );
+
+    await expect(
+      adapter.executeSync({
+        taskType: 'openai.chat',
+        request: { model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }] },
+      }),
+    ).rejects.toThrow('Local API request failed with status 400');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
