@@ -3,9 +3,9 @@ import { ClaudeController } from '../controllers/claude.controller';
 import { OpenAIController } from '../controllers/openai.controller';
 
 describe('Controller dispatch guard', () => {
-  test('OpenAI chat sync cancels pending task when no client is online', async () => {
-    const gateway = { dispatchTask: jest.fn(() => false) };
-    const taskService = { createPendingTask: jest.fn(() => ({ waitForResult: jest.fn() })), cancelTask: jest.fn() };
+  test('OpenAI chat sync does not create pending task when no client is online', async () => {
+    const gateway = { selectNextClientSocketId: jest.fn(() => null), emitTaskToClient: jest.fn() };
+    const taskService = { createPendingTask: jest.fn(() => ({ waitForResult: jest.fn() })) };
     const adapter = {
       toProxyTaskFromOpenAIChat: jest.fn(() => ({ responseMode: 'sync' })),
     };
@@ -22,13 +22,12 @@ describe('Controller dispatch guard', () => {
       controller.createChatCompletion({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }] }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
 
-    expect(taskService.createPendingTask).toHaveBeenCalledTimes(1);
-    expect(taskService.cancelTask).toHaveBeenCalledTimes(1);
+    expect(taskService.createPendingTask).not.toHaveBeenCalled();
   });
 
-  test('OpenAI embeddings cancels pending task when no client is online', async () => {
-    const gateway = { dispatchTask: jest.fn(() => false) };
-    const taskService = { createPendingTask: jest.fn(() => ({ waitForResult: jest.fn() })), cancelTask: jest.fn() };
+  test('OpenAI embeddings does not create pending task when no client is online', async () => {
+    const gateway = { selectNextClientSocketId: jest.fn(() => null), emitTaskToClient: jest.fn() };
+    const taskService = { createPendingTask: jest.fn(() => ({ waitForResult: jest.fn() })) };
     const adapter = {
       toProxyTaskFromOpenAIEmbeddings: jest.fn(() => ({ responseMode: 'sync' })),
     };
@@ -45,13 +44,12 @@ describe('Controller dispatch guard', () => {
       controller.createEmbedding({ model: 'text-embedding-3-small', input: 'hello world' }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
 
-    expect(taskService.createPendingTask).toHaveBeenCalledTimes(1);
-    expect(taskService.cancelTask).toHaveBeenCalledTimes(1);
+    expect(taskService.createPendingTask).not.toHaveBeenCalled();
   });
 
-  test('Claude sync cancels pending task when no client is online', async () => {
-    const gateway = { dispatchTask: jest.fn(() => false) };
-    const taskService = { createPendingTask: jest.fn(() => ({ waitForResult: jest.fn() })), cancelTask: jest.fn() };
+  test('Claude sync does not create pending task when no client is online', async () => {
+    const gateway = { selectNextClientSocketId: jest.fn(() => null), emitTaskToClient: jest.fn() };
+    const taskService = { createPendingTask: jest.fn(() => ({ waitForResult: jest.fn() })) };
     const adapter = {
       toProxyTaskFromClaudeMessages: jest.fn(() => ({ responseMode: 'sync' })),
     };
@@ -62,12 +60,11 @@ describe('Controller dispatch guard', () => {
       controller.createMessage({ model: 'claude-3-5-sonnet-latest', messages: [{ role: 'user', content: 'hi' }] }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
 
-    expect(taskService.createPendingTask).toHaveBeenCalledTimes(1);
-    expect(taskService.cancelTask).toHaveBeenCalledTimes(1);
+    expect(taskService.createPendingTask).not.toHaveBeenCalled();
   });
 
   test('OpenAI chat sync maps client execution errors to BadGatewayException', async () => {
-    const gateway = { dispatchTask: jest.fn(() => true) };
+    const gateway = { selectNextClientSocketId: jest.fn(() => 'socket-1'), emitTaskToClient: jest.fn() };
     const taskService = {
       createPendingTask: jest.fn(() => ({
         waitForResult: jest.fn(async () => {
@@ -77,7 +74,6 @@ describe('Controller dispatch guard', () => {
           };
         }),
       })),
-      cancelTask: jest.fn(),
     };
     const adapter = {
       toProxyTaskFromOpenAIChat: jest.fn(() => ({ responseMode: 'sync' })),
