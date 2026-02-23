@@ -31,12 +31,14 @@ export class LocalLlmWsClient {
     this.socket.on('task:create', async (task: TaskCreatePayload) => {
       try {
         if (task.responseMode === 'stream') {
+          let chunkIndex = 0;
           const finalResult = await this.adapter.executeStream(task, (chunk) => {
             this.socket.emit('task:chunk', {
               taskId: task.taskId,
-              chunkIndex: 0,
+              chunkIndex,
               chunk,
             });
+            chunkIndex += 1;
           });
 
           this.socket.emit('task:complete', {

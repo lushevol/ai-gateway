@@ -5,6 +5,7 @@ export type ResponseMode = 'sync' | 'stream';
 
 interface PendingTaskInternal {
   mode: ResponseMode;
+  expectedSocketId: string;
   timeout: NodeJS.Timeout;
   resolve: (payload: TaskCompletePayload) => void;
   reject: (error: TaskErrorPayload) => void;
@@ -21,7 +22,7 @@ export interface PendingTaskHandle {
 export class ProxyTaskService {
   private readonly pending = new Map<string, PendingTaskInternal>();
 
-  createPendingTask(taskId: string, mode: ResponseMode, timeoutMs: number): PendingTaskHandle {
+  createPendingTask(taskId: string, mode: ResponseMode, timeoutMs: number, expectedSocketId: string): PendingTaskHandle {
     let resolveFn!: (payload: TaskCompletePayload) => void;
     let rejectFn!: (error: TaskErrorPayload) => void;
 
@@ -48,6 +49,7 @@ export class ProxyTaskService {
 
     this.pending.set(taskId, {
       mode,
+      expectedSocketId,
       timeout,
       resolve: resolveFn,
       reject: rejectFn,
@@ -76,9 +78,9 @@ export class ProxyTaskService {
     };
   }
 
-  resolveTask(taskId: string, payload: TaskCompletePayload): void {
+  resolveTask(taskId: string, sourceSocketId: string, payload: TaskCompletePayload): void {
     const state = this.pending.get(taskId);
-    if (!state || state.done) {
+    if (!state || state.done || state.expectedSocketId !== sourceSocketId) {
       return;
     }
 
@@ -88,9 +90,9 @@ export class ProxyTaskService {
     state.resolve(payload);
   }
 
-  rejectTask(taskId: string, error: TaskErrorPayload): void {
+  rejectTask(taskId: string, sourceSocketId: string, error: TaskErrorPayload): void {
     const state = this.pending.get(taskId);
-    if (!state || state.done) {
+    if (!state || state.done || state.expectedSocketId !== sourceSocketId) {
       return;
     }
 
@@ -100,9 +102,9 @@ export class ProxyTaskService {
     state.reject(error);
   }
 
-  appendChunk(taskId: string, chunk: TaskChunkPayload): void {
+  appendChunk(taskId: string, sourceSocketId: string, chunk: TaskChunkPayload): void {
     const state = this.pending.get(taskId);
-    if (!state || state.done || state.mode !== 'stream') {
+    if (!state || state.done || state.mode !== 'stream' || state.expectedSocketId !== sourceSocketId) {
       return;
     }
 
@@ -111,7 +113,7 @@ export class ProxyTaskService {
     }
   }
 
-  cancelTask(taskId: string): void {
+  cancelPendingTask(taskId: string): void {
     const state = this.pending.get(taskId);
     if (!state || state.done) {
       return;
@@ -120,5 +122,11 @@ export class ProxyTaskService {
     state.done = true;
     clearTimeout(state.timeout);
     this.pending.delete(taskId);
+    state.reject({
+      taskId,
+      code: 'gateway_dispatch_failed',
+      message: `Task ${taskId} could not be dispatched`,
+      retriable: true,
+    });
   }
 }
