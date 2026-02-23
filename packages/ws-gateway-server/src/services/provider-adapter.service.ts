@@ -101,6 +101,16 @@ export class ProviderAdapterService {
     return 'data: [DONE]\n\n';
   }
 
+  toOpenAIErrorSseFrame(message: string): string {
+    return `data: ${JSON.stringify({
+      error: {
+        message,
+        type: 'server_error',
+        code: 'proxy_error',
+      },
+    })}\n\n`;
+  }
+
   toClaudeMessagesResponse(taskId: string, model: string, result: { content: string; usage?: Record<string, unknown> }) {
     return {
       id: taskId,
@@ -116,6 +126,16 @@ export class ProviderAdapterService {
 
   toClaudeSseFrame(event: string, data: unknown): string {
     return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  }
+
+  toClaudeErrorSseFrame(message: string): string {
+    return this.toClaudeSseFrame('error', {
+      type: 'error',
+      error: {
+        type: 'api_error',
+        message,
+      },
+    });
   }
 
   toOpenAIEmbeddingResponse(model: string, result: { embeddings: number[][]; usage?: { prompt_tokens?: number; total_tokens?: number } }) {
