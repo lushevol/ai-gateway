@@ -1,4 +1,5 @@
 import { ClientOptions, ModelDescriptor, TaskCreatePayload } from './types';
+import { logger } from './logger';
 
 type FetchLike = typeof fetch;
 
@@ -181,20 +182,54 @@ export class LocalApiAdapter {
       try {
         const response = await this.fetchImpl(url, init);
         if (response.ok) {
+          if (attempt > 0) {
+            logger.info('local_api_retry_recovered', {
+              operation,
+              url,
+              attempt,
+            });
+          }
           return response;
         }
 
         if (!this.shouldRetryStatus(response.status) || attempt === maxRetries) {
+          logger.warn('local_api_request_terminal_status', {
+            operation,
+            url,
+            status: response.status,
+            attempt,
+            maxRetries,
+          });
           return response;
         }
 
         lastError = new Error(`${operation} failed with status ${response.status}`);
+        logger.warn('local_api_retry_scheduled', {
+          operation,
+          url,
+          status: response.status,
+          attempt,
+          nextAttempt: attempt + 1,
+        });
       } catch (error) {
         if (attempt === maxRetries) {
+          logger.error('local_api_request_failed', {
+            operation,
+            url,
+            attempt,
+            message: error instanceof Error ? error.message : String(error),
+          });
           throw error;
         }
 
         lastError = error;
+        logger.warn('local_api_retry_scheduled', {
+          operation,
+          url,
+          attempt,
+          nextAttempt: attempt + 1,
+          message: error instanceof Error ? error.message : String(error),
+        });
       }
 
       await this.sleep(Math.min(maxDelayMs, baseDelayMs * 2 ** attempt));

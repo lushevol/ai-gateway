@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { TaskChunkPayload, TaskCompletePayload, TaskErrorPayload } from '../types/proxy-protocol';
 
 export type ResponseMode = 'sync' | 'stream';
@@ -20,6 +20,7 @@ export interface PendingTaskHandle {
 
 @Injectable()
 export class ProxyTaskService {
+  private readonly logger = new Logger(ProxyTaskService.name);
   private readonly pending = new Map<string, PendingTaskInternal>();
 
   createPendingTask(taskId: string, mode: ResponseMode, timeoutMs: number, expectedSocketId: string): PendingTaskHandle {
@@ -39,6 +40,7 @@ export class ProxyTaskService {
 
       state.done = true;
       this.pending.delete(taskId);
+      this.logger.warn(`task_timeout taskId=${taskId} expectedSocketId=${state.expectedSocketId}`);
       state.reject({
         taskId,
         code: 'gateway_timeout',
@@ -56,6 +58,8 @@ export class ProxyTaskService {
       chunkListeners: [],
       done: false,
     });
+
+    this.logger.log(`task_pending_created taskId=${taskId} mode=${mode} expectedSocketId=${expectedSocketId} timeoutMs=${timeoutMs}`);
 
     return {
       waitForResult: () => promise,
@@ -81,33 +85,39 @@ export class ProxyTaskService {
   resolveTask(taskId: string, sourceSocketId: string, payload: TaskCompletePayload): void {
     const state = this.pending.get(taskId);
     if (!state || state.done || state.expectedSocketId !== sourceSocketId) {
+      this.logger.warn(`task_complete_ignored taskId=${taskId} sourceSocketId=${sourceSocketId}`);
       return;
     }
 
     state.done = true;
     clearTimeout(state.timeout);
     this.pending.delete(taskId);
+    this.logger.log(`task_pending_resolved taskId=${taskId} sourceSocketId=${sourceSocketId}`);
     state.resolve(payload);
   }
 
   rejectTask(taskId: string, sourceSocketId: string, error: TaskErrorPayload): void {
     const state = this.pending.get(taskId);
     if (!state || state.done || state.expectedSocketId !== sourceSocketId) {
+      this.logger.warn(`task_error_ignored taskId=${taskId} sourceSocketId=${sourceSocketId} code=${error.code}`);
       return;
     }
 
     state.done = true;
     clearTimeout(state.timeout);
     this.pending.delete(taskId);
+    this.logger.warn(`task_pending_rejected taskId=${taskId} sourceSocketId=${sourceSocketId} code=${error.code}`);
     state.reject(error);
   }
 
   appendChunk(taskId: string, sourceSocketId: string, chunk: TaskChunkPayload): void {
     const state = this.pending.get(taskId);
     if (!state || state.done || state.mode !== 'stream' || state.expectedSocketId !== sourceSocketId) {
+      this.logger.debug(`task_chunk_ignored taskId=${taskId} sourceSocketId=${sourceSocketId}`);
       return;
     }
 
+    this.logger.debug(`task_chunk_forwarded taskId=${taskId} sourceSocketId=${sourceSocketId} chunkIndex=${chunk.chunkIndex}`);
     for (const listener of state.chunkListeners) {
       listener(chunk);
     }
@@ -116,12 +126,14 @@ export class ProxyTaskService {
   cancelPendingTask(taskId: string): void {
     const state = this.pending.get(taskId);
     if (!state || state.done) {
+      this.logger.warn(`task_cancel_ignored taskId=${taskId}`);
       return;
     }
 
     state.done = true;
     clearTimeout(state.timeout);
     this.pending.delete(taskId);
+    this.logger.warn(`task_pending_cancelled taskId=${taskId} expectedSocketId=${state.expectedSocketId}`);
     state.reject({
       taskId,
       code: 'gateway_dispatch_failed',
