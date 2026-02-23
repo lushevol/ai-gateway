@@ -15,7 +15,7 @@ import { TaskQueueService } from "../services/task-queue.service";
 // biome-ignore lint/style/useImportType: <explanation>
 import { WorkerRegistryService } from "../services/worker-registry.service";
 
-@WebSocketGateway()
+@WebSocketGateway({ namespace: '/aitask' })
 export class TaskGateway {
 	@WebSocketServer()
 	server: Server = new Server();

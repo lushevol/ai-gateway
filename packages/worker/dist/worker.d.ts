@@ -1,4 +1,8 @@
-import { Task, WorkerMetadata, LLMResponse } from "@ai-gateway/types";
+import {
+	type LLMResponse,
+	type Task,
+	type WorkerMetadata,
+} from "@ai-gateway/types";
 import { EventEmitter } from "events";
 export declare class Worker extends EventEmitter {
 	private masterUrl;

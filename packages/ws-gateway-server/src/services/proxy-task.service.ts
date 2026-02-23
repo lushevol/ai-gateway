@@ -110,4 +110,15 @@ export class ProxyTaskService {
       listener(chunk);
     }
   }
+
+  cancelTask(taskId: string): void {
+    const state = this.pending.get(taskId);
+    if (!state || state.done) {
+      return;
+    }
+
+    state.done = true;
+    clearTimeout(state.timeout);
+    this.pending.delete(taskId);
+  }
 }

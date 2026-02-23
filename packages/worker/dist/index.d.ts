@@ -1,1 +1,2 @@
-export * from "./worker";
+import { Worker } from "./worker";
+export { Worker };

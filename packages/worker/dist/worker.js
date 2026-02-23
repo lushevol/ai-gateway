@@ -1,12 +1,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Worker = void 0;
-const socket_io_client_1 = require("socket.io-client");
 const events_1 = require("events");
+const socket_io_client_1 = require("socket.io-client");
 class Worker extends events_1.EventEmitter {
 	constructor(masterUrl, metadata) {
 		super();
 		this.masterUrl = masterUrl;
 		this.metadata = metadata;
+		this.workerId = "";
+		this.heartbeatInterval = null;
 		this.socket = (0, socket_io_client_1.io)(masterUrl);
 		this.setupSocketHandlers();
 	}
@@ -37,14 +39,16 @@ class Worker extends events_1.EventEmitter {
 				response,
 			});
 		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			this.socket.emit("task:error", {
 				taskId: task.id,
-				error: error.message,
+				error: errorMessage,
 			});
 		}
 	}
 	handleDisconnect() {
-		clearInterval(this.heartbeatInterval);
+		this.heartbeatInterval && clearInterval(this.heartbeatInterval);
 		this.emit("disconnected");
 		// Attempt to reconnect after delay
 		setTimeout(() => {
@@ -56,7 +60,7 @@ class Worker extends events_1.EventEmitter {
 		throw new Error("processTask must be implemented by worker implementation");
 	}
 	disconnect() {
-		clearInterval(this.heartbeatInterval);
+		this.heartbeatInterval && clearInterval(this.heartbeatInterval);
 		this.socket.disconnect();
 	}
 }
