@@ -43,7 +43,12 @@ export class OpenAIController {
       res.setHeader('Connection', 'keep-alive');
 
       const unsubscribe = pending.onChunk((chunk) => {
-        const payload = chunk.chunk as { delta?: string; index?: number; finish_reason?: string | null };
+        const payload = chunk.chunk as {
+          delta?: string;
+          tool_calls?: unknown[];
+          index?: number;
+          finish_reason?: string | null;
+        };
         res.write(this.adapter.toOpenAISseFrame(taskId, body.model, payload));
       });
 

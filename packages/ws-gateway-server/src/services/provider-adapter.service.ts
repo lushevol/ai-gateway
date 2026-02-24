@@ -55,7 +55,16 @@ export class ProviderAdapterService {
     };
   }
 
-  toOpenAIChatResponse(taskId: string, model: string, result: { content: string; usage?: Record<string, unknown> }) {
+  toOpenAIChatResponse(
+    taskId: string,
+    model: string,
+    result: {
+      content: string;
+      usage?: Record<string, unknown>;
+      tool_calls?: Array<Record<string, unknown>>;
+    },
+  ) {
+    const hasToolCalls = Array.isArray(result.tool_calls) && result.tool_calls.length > 0;
     return {
       id: taskId,
       object: 'chat.completion',
@@ -67,9 +76,10 @@ export class ProviderAdapterService {
           message: {
             role: 'assistant',
             content: result.content,
+            tool_calls: hasToolCalls ? result.tool_calls : undefined,
             refusal: null,
           },
-          finish_reason: 'stop',
+          finish_reason: hasToolCalls ? 'tool_calls' : 'stop',
           logprobs: null,
         },
       ],
@@ -77,7 +87,24 @@ export class ProviderAdapterService {
     };
   }
 
-  toOpenAISseFrame(taskId: string, model: string, chunk: { delta?: string; index?: number; finish_reason?: string | null }): string {
+  toOpenAISseFrame(
+    taskId: string,
+    model: string,
+    chunk: {
+      delta?: string;
+      tool_calls?: unknown[];
+      index?: number;
+      finish_reason?: string | null;
+    },
+  ): string {
+    const delta: { content?: string; tool_calls?: unknown[] } = {};
+    if (chunk.delta) {
+      delta.content = chunk.delta;
+    }
+    if (Array.isArray(chunk.tool_calls) && chunk.tool_calls.length > 0) {
+      delta.tool_calls = chunk.tool_calls;
+    }
+
     const payload = {
       id: taskId,
       object: 'chat.completion.chunk',
@@ -86,9 +113,7 @@ export class ProviderAdapterService {
       choices: [
         {
           index: chunk.index ?? 0,
-          delta: {
-            content: chunk.delta ?? '',
-          },
+          delta,
           finish_reason: chunk.finish_reason ?? null,
         },
       ],

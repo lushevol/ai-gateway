@@ -31,8 +31,10 @@ export class LocalApiAdapter {
     const json = await response.json();
 
     if (task.taskType === 'openai.chat') {
+      const firstChoice = json.choices?.[0];
       return {
-        content: json.choices?.[0]?.message?.content ?? '',
+        content: firstChoice?.message?.content ?? '',
+        tool_calls: firstChoice?.message?.tool_calls ?? [],
         usage: json.usage,
       };
     }
@@ -121,10 +123,12 @@ export class LocalApiAdapter {
         try {
           const parsed = JSON.parse(rawData);
           if (task.taskType === 'openai.chat') {
+            const choice = parsed.choices?.[0];
             onChunk({
-              delta: parsed.choices?.[0]?.delta?.content ?? '',
-              index: parsed.choices?.[0]?.index ?? 0,
-              finish_reason: parsed.choices?.[0]?.finish_reason ?? null,
+              delta: choice?.delta?.content ?? '',
+              tool_calls: choice?.delta?.tool_calls,
+              index: choice?.index ?? 0,
+              finish_reason: choice?.finish_reason ?? null,
             });
           } else {
             onChunk({ event: currentEvent, data: parsed });
