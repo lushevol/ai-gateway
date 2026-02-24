@@ -3,7 +3,7 @@ export { Worker };
 
 // Example usage:
 if (require.main === module) {
-	const worker = new Worker("http://localhost:3000", {
+	const worker = new Worker("http://localhost:1212", {
 		version: "1.0.0",
 		capabilities: ["text-generation"],
 		load: 0,

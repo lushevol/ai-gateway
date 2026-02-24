@@ -107,7 +107,7 @@ Applies to OpenAI chat / Claude messages when `stream=true`.
 ## 8. Configuration
 
 ### 8.1 Server
-- `PORT` (default 3000)
+- `PORT` (default 1212)
 - `WS_NAMESPACE` (default `/llm-proxy`)
 - `TASK_TIMEOUT_MS` (default 120000)
 - `HEARTBEAT_TTL_MS` (default 180000)

@@ -13,7 +13,7 @@ export class TaskClientService implements OnModuleInit, OnModuleDestroy {
 	private taskResults = new Map<string, Subject<Task>>();
 
 	constructor() {
-		this.socket = io("http://localhost:3000"); // Task Master URL
+		this.socket = io("http://localhost:1212"); // Task Master URL
 		this.setupSocketHandlers();
 	}
 

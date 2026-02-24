@@ -11,7 +11,7 @@ describe('LocalApiAdapter', () => {
     });
 
     const adapter = new LocalApiAdapter(
-      { gatewayWsUrl: 'http://localhost:3000', localLlmBaseUrl: 'http://127.0.0.1:11434' },
+      { gatewayWsUrl: 'http://localhost:1212', localLlmBaseUrl: 'http://127.0.0.1:11434' },
       fetchMock as unknown as typeof fetch,
     );
 
@@ -33,7 +33,7 @@ describe('LocalApiAdapter', () => {
     });
 
     const adapter = new LocalApiAdapter(
-      { gatewayWsUrl: 'http://localhost:3000', localLlmBaseUrl: 'http://127.0.0.1:11434' },
+      { gatewayWsUrl: 'http://localhost:1212', localLlmBaseUrl: 'http://127.0.0.1:11434' },
       fetchMock as unknown as typeof fetch,
     );
 
@@ -60,7 +60,7 @@ describe('LocalApiAdapter', () => {
     });
 
     const adapter = new LocalApiAdapter(
-      { gatewayWsUrl: 'http://localhost:3000', localLlmBaseUrl: 'http://127.0.0.1:11434' },
+      { gatewayWsUrl: 'http://localhost:1212', localLlmBaseUrl: 'http://127.0.0.1:11434' },
       fetchMock as unknown as typeof fetch,
     );
 
@@ -97,7 +97,7 @@ describe('LocalApiAdapter', () => {
 
     const adapter = new LocalApiAdapter(
       {
-        gatewayWsUrl: 'http://localhost:3000',
+        gatewayWsUrl: 'http://localhost:1212',
         localLlmBaseUrl: 'http://127.0.0.1:11434',
         localApiMaxRetries: 1,
         localApiRetryBaseDelayMs: 0,
@@ -123,7 +123,7 @@ describe('LocalApiAdapter', () => {
 
     const adapter = new LocalApiAdapter(
       {
-        gatewayWsUrl: 'http://localhost:3000',
+        gatewayWsUrl: 'http://localhost:1212',
         localLlmBaseUrl: 'http://127.0.0.1:11434',
         localApiMaxRetries: 2,
         localApiRetryBaseDelayMs: 0,

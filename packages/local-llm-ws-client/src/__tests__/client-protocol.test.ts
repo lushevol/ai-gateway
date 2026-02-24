@@ -24,7 +24,7 @@ describe('LocalLlmWsClient protocol', () => {
     };
 
     const client = new LocalLlmWsClient(
-      { gatewayWsUrl: 'http://localhost:3000', localLlmBaseUrl: 'http://127.0.0.1:11434', heartbeatIntervalMs: 100 },
+      { gatewayWsUrl: 'http://localhost:1212', localLlmBaseUrl: 'http://127.0.0.1:11434', heartbeatIntervalMs: 100 },
       socket as any,
       adapter as any,
     );
@@ -62,7 +62,7 @@ describe('LocalLlmWsClient protocol', () => {
     };
 
     const client = new LocalLlmWsClient(
-      { gatewayWsUrl: 'http://localhost:3000', localLlmBaseUrl: 'http://127.0.0.1:11434' },
+      { gatewayWsUrl: 'http://localhost:1212', localLlmBaseUrl: 'http://127.0.0.1:11434' },
       socket as any,
       adapter as any,
     );
@@ -91,7 +91,7 @@ describe('LocalLlmWsClient protocol', () => {
     };
 
     const client = new LocalLlmWsClient(
-      { gatewayWsUrl: 'http://localhost:3000', localLlmBaseUrl: 'http://127.0.0.1:11434' },
+      { gatewayWsUrl: 'http://localhost:1212', localLlmBaseUrl: 'http://127.0.0.1:11434' },
       socket as any,
       adapter as any,
     );

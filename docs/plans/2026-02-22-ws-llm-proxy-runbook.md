@@ -9,7 +9,7 @@ pnpm --filter @ai-gateway/ws-gateway-server dev
 
 2. Start local websocket client:
 ```bash
-GATEWAY_WS_URL=http://127.0.0.1:3000 \
+GATEWAY_WS_URL=http://127.0.0.1:1212 \
 GATEWAY_WS_NAMESPACE=/llm-proxy \
 LOCAL_LLM_BASE_URL=http://127.0.0.1:11434 \
 pnpm --filter @ai-gateway/local-llm-ws-client dev
@@ -18,7 +18,7 @@ pnpm --filter @ai-gateway/local-llm-ws-client dev
 ## OpenAI Chat (non-stream)
 
 ```bash
-curl -s http://127.0.0.1:3000/v1/chat/completions \
+curl -s http://127.0.0.1:1212/v1/chat/completions \
   -H 'content-type: application/json' \
   -d '{
     "model": "gpt-4o-mini",
@@ -30,7 +30,7 @@ curl -s http://127.0.0.1:3000/v1/chat/completions \
 ## OpenAI Chat (stream)
 
 ```bash
-curl -N http://127.0.0.1:3000/v1/chat/completions \
+curl -N http://127.0.0.1:1212/v1/chat/completions \
   -H 'content-type: application/json' \
   -d '{
     "model": "gpt-4o-mini",
@@ -42,7 +42,7 @@ curl -N http://127.0.0.1:3000/v1/chat/completions \
 ## OpenAI Embeddings
 
 ```bash
-curl -s http://127.0.0.1:3000/v1/embeddings \
+curl -s http://127.0.0.1:1212/v1/embeddings \
   -H 'content-type: application/json' \
   -d '{
     "model": "text-embedding-3-small",
@@ -53,13 +53,13 @@ curl -s http://127.0.0.1:3000/v1/embeddings \
 ## OpenAI Models (dynamic from websocket clients)
 
 ```bash
-curl -s http://127.0.0.1:3000/v1/models
+curl -s http://127.0.0.1:1212/v1/models
 ```
 
 ## Claude Messages (non-stream)
 
 ```bash
-curl -s http://127.0.0.1:3000/v1/messages \
+curl -s http://127.0.0.1:1212/v1/messages \
   -H 'content-type: application/json' \
   -d '{
     "model": "claude-3-5-sonnet-latest",
@@ -71,7 +71,7 @@ curl -s http://127.0.0.1:3000/v1/messages \
 ## Claude Messages (stream)
 
 ```bash
-curl -N http://127.0.0.1:3000/v1/messages \
+curl -N http://127.0.0.1:1212/v1/messages \
   -H 'content-type: application/json' \
   -d '{
     "model": "claude-3-5-sonnet-latest",
