@@ -24,7 +24,7 @@ export class ChatService {
   });
 
   async createChatStream(body: ChatRequestBody) {
-    const model = body.model ?? 'gpt-4o-mini';
+    const model = body.model ?? 'gpt-4.1';
 
     const result = streamText({
       model: this.provider.chat(model),
